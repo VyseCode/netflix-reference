@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { CheckIcon, CloseIcon, PencilIcon, PlusIcon, ShieldIcon, TrashIcon } from "@/components/Icons";
 import type { Maturity, ProfileDTO } from "@/lib/types";
 
@@ -29,7 +29,6 @@ export function ProfileManager({
   activeId: string | null;
 }) {
   const router = useRouter();
-  const [items, setItems] = useState(profiles);
   const [name, setName] = useState("");
   const [color, setColor] = useState(colors[0]);
   const [kids, setKids] = useState(false);
@@ -38,8 +37,6 @@ export function ProfileManager({
   const [edit, setEdit] = useState<EditState | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => setItems(profiles), [profiles]);
 
   async function request(url: string, method: string, body?: unknown) {
     setBusy(true);
@@ -111,7 +108,7 @@ export function ProfileManager({
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <section className="space-y-4">
-          {items.map((profile) => (
+          {profiles.map((profile) => (
             <article key={profile.id} className="rounded-2xl border border-line bg-raised p-5">
               {editing === profile.id && edit ? (
                 <div className="space-y-4">
@@ -199,7 +196,7 @@ export function ProfileManager({
                     className="rounded-lg border border-line p-2 text-muted hover:border-accent hover:text-cream">
                     <PencilIcon className="h-4 w-4" />
                   </button>
-                  <button type="button" onClick={() => remove(profile.id)} disabled={busy || items.length <= 1} aria-label={`Delete ${profile.name}`}
+                  <button type="button" onClick={() => remove(profile.id)} disabled={busy || profiles.length <= 1} aria-label={`Delete ${profile.name}`}
                     className="rounded-lg border border-line p-2 text-muted hover:border-bad hover:text-bad disabled:opacity-30">
                     <TrashIcon className="h-4 w-4" />
                   </button>
@@ -211,7 +208,7 @@ export function ProfileManager({
 
         <aside className="h-fit rounded-2xl border border-line bg-raised p-6">
           <h2 className="display mb-1 text-xl">Add a profile</h2>
-          <p className="mb-5 text-xs text-muted">{5 - items.length} slot{5 - items.length === 1 ? "" : "s"} remaining</p>
+          <p className="mb-5 text-xs text-muted">{5 - profiles.length} slot{5 - profiles.length === 1 ? "" : "s"} remaining</p>
           <form onSubmit={create} className="space-y-4" noValidate>
             <div>
               <label htmlFor="new-name" className="mb-2 block text-sm text-cream">Name</label>
@@ -249,7 +246,7 @@ export function ProfileManager({
                 ))}
               </select>
             </label>
-            <button type="submit" disabled={busy || items.length >= 5}
+            <button type="submit" disabled={busy || profiles.length >= 5}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 font-semibold text-accent-ink disabled:opacity-40">
               <PlusIcon className="h-4 w-4" /> Add profile
             </button>

@@ -49,7 +49,6 @@ export async function rankRecommendations(
   ]);
 
   const weights = new Map<string, number>();
-  const disliked: Types.ObjectId[] = [];
   const addGenre = (genre: string, amount: number) => {
     const key = genre.trim().toLowerCase();
     if (!key) return;

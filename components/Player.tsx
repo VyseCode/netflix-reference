@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, InfoIcon, PlayIcon, ShieldIcon } from "@/components/Icons";
 import type { PlaybackInfo } from "@/lib/media-adapter";
 
@@ -43,6 +43,7 @@ export function Player({
   const [status, setStatus] = useState(0);
   const [error, setError] = useState("");
   const [position, setPosition] = useState(0);
+  const positionRef = useRef(0);
   const [playing, setPlaying] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -65,6 +66,7 @@ export function Player({
             ? result.progress.positionSeconds
             : 0;
         setPosition(resume);
+        positionRef.current = resume;
       } catch (cause) {
         if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not open the player");
       } finally {
@@ -105,16 +107,17 @@ export function Player({
 
   useEffect(() => {
     if (!playing) return;
-    const timer = window.setInterval(() => setPosition((current) => Math.min(current + 1, duration)), 1000);
+    const timer = window.setInterval(() => {
+      const next = Math.min(positionRef.current + 1, duration);
+      positionRef.current = next;
+      setPosition(next);
+      if (next >= duration && duration > 0) {
+        setPlaying(false);
+        void save(duration);
+      }
+    }, 1000);
     return () => window.clearInterval(timer);
-  }, [playing, duration]);
-
-  useEffect(() => {
-    if (playing && position >= duration && duration > 0) {
-      setPlaying(false);
-      void save(duration);
-    }
-  }, [playing, position, duration, save]);
+  }, [playing, duration, save]);
 
   function pause() {
     setPlaying(false);
@@ -191,7 +194,11 @@ export function Player({
         </label>
         <input
           id="seek" type="range" min={0} max={Math.max(1, duration)} value={Math.min(position, duration)}
-          onChange={(e) => setPosition(Number(e.target.value))}
+          onChange={(e) => {
+            const value = Number(e.target.value);
+            positionRef.current = value;
+            setPosition(value);
+          }}
           aria-label="Seek playback position"
           className="w-full accent-[#e8a33d]"
         />
@@ -200,7 +207,7 @@ export function Player({
             className="rounded-lg bg-accent px-5 py-2.5 font-semibold text-accent-ink disabled:opacity-50">
             {saving ? "Saving…" : "Save progress"}
           </button>
-          <button type="button" onClick={() => { setPosition(duration); void save(duration); }} disabled={saving}
+          <button type="button" onClick={() => { positionRef.current = duration; setPosition(duration); void save(duration); }} disabled={saving}
             className="rounded-lg border border-line px-5 py-2.5 font-semibold text-cream hover:border-accent disabled:opacity-50">
             Mark as watched
           </button>

@@ -258,7 +258,13 @@ async function main() {
   for (let i = 0; i < accounts.length; i += 1) {
     const account = accounts[i];
     const created = await M.Profile.insertMany(
-      account.profiles.map((p) => ({ ...p, account: userDocs[i]._id })),
+      account.profiles.map((p) => ({
+        name: p.name,
+        avatarColor: p.color,
+        kids: p.kids,
+        maxRating: p.maxRating,
+        account: userDocs[i]._id,
+      })),
     );
     const active = created.find((p) => p.name === account.active);
     await M.User.updateOne({ _id: userDocs[i]._id }, { $set: { activeProfile: active._id } });

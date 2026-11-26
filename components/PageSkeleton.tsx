@@ -1,4 +1,4 @@
-export default function Loading() {
+export function PageSkeleton() {
   return (
     <div className="mx-auto max-w-[1500px] px-4 py-10 md:px-8" aria-busy="true">
       <div className="mb-8 h-9 w-64 animate-pulse rounded-lg bg-raised" />
