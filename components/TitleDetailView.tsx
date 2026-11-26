@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft, ClockIcon, PlayIcon, ShieldIcon, StarIcon } from "@/components/Icons";
+import { ReactionButtons } from "@/components/ReactionButtons";
 import { WatchlistButton } from "@/components/WatchlistButton";
 import type { TitleDetailDTO } from "@/lib/types";
 
@@ -33,6 +34,7 @@ export function TitleDetailView({ title }: { title: TitleDetailDTO }) {
               <PlayIcon className="h-4 w-4" /> Play
             </Link>
             <WatchlistButton titleId={title.id} initialInList={title.inWatchlist} />
+            <ReactionButtons titleId={title.id} initial={title.reaction} />
           </div>
         </div>
       </section>

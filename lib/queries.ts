@@ -193,6 +193,56 @@ export async function getContinueWatching(
   });
 }
 
+export async function getProgressPage(
+  profileId: string,
+  page: number,
+  limit: number,
+): Promise<Paginated<ProgressDTO>> {
+  const [total, rows] = await Promise.all([
+    Progress.countDocuments({ profile: profileId }),
+    Progress.find({ profile: profileId })
+      .select("title episode positionSeconds durationSeconds completed updatedAt")
+      .sort({ updatedAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean() as unknown as Promise<LeanProgress[]>,
+  ]);
+  if (rows.length === 0) {
+    return { items: [], page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) };
+  }
+
+  const titles = (await Title.find({ _id: { $in: rows.map((row) => row.title) } })
+    .select("type title thumbnailUrl")
+    .limit(100)
+    .lean()) as unknown as Array<{
+    _id: Types.ObjectId;
+    type: "movie" | "series";
+    title: string;
+    thumbnailUrl: string;
+  }>;
+  const byId = new Map(titles.map((title) => [title._id.toString(), title]));
+
+  const items = rows.flatMap((row) => {
+    const title = byId.get(row.title.toString());
+    if (!title) return [];
+    return [{
+      id: row._id.toString(),
+      titleId: row.title.toString(),
+      titleName: title.title,
+      thumbnailUrl: title.thumbnailUrl,
+      type: title.type,
+      episodeId: row.episode?.toString() ?? null,
+      positionSeconds: row.positionSeconds,
+      durationSeconds: row.durationSeconds,
+      percent: Math.min(100, Math.round((row.positionSeconds / row.durationSeconds) * 100)),
+      completed: row.completed,
+      updatedAt: row.updatedAt.toISOString(),
+    }];
+  });
+
+  return { items, page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) };
+}
+
 export async function getBrowse(profile: ProfileDTO): Promise<BrowseDTO> {
   const [trending, fresh, top, recommendations, liked, continueWatching] =
     await Promise.all([
