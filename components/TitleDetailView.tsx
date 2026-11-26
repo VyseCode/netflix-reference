@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft, ClockIcon, PlayIcon, ShieldIcon, StarIcon } from "@/components/Icons";
+import { WatchlistButton } from "@/components/WatchlistButton";
 import type { TitleDetailDTO } from "@/lib/types";
 
 export function TitleDetailView({ title }: { title: TitleDetailDTO }) {
@@ -31,6 +32,7 @@ export function TitleDetailView({ title }: { title: TitleDetailDTO }) {
               className="flex items-center gap-2 rounded-xl bg-accent px-6 py-3 font-semibold text-accent-ink hover:bg-accent-bright">
               <PlayIcon className="h-4 w-4" /> Play
             </Link>
+            <WatchlistButton titleId={title.id} initialInList={title.inWatchlist} />
           </div>
         </div>
       </section>

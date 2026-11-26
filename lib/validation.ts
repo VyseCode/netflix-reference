@@ -68,6 +68,11 @@ export const reactionSchema = z.object({
   value: z.enum(["like", "dislike", "clear"]),
 });
 
+export const paginationSchema = z.object({
+  page: z.number().int().min(1).max(10000).default(1),
+  limit: z.number().int().min(1).max(100).default(20),
+});
+
 export const searchSchema = z.object({
   q: z.string().trim().max(120).default(""),
   type: z.enum(["movie", "series", "all"]).default("all"),

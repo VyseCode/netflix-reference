@@ -7,6 +7,7 @@ import type {
   Paginated,
   ProfileDTO,
   ProgressDTO,
+  WatchlistDTO,
   SeasonDTO,
   TitleDTO,
   TitleDetailDTO,
@@ -17,6 +18,7 @@ import { Progress } from "@/models/Progress";
 import { Reaction } from "@/models/Reaction";
 import { Season } from "@/models/Season";
 import { Title } from "@/models/Title";
+import { WatchlistItem } from "@/models/WatchlistItem";
 
 interface LeanTitle {
   _id: Types.ObjectId;
@@ -224,6 +226,55 @@ export async function getBrowse(profile: ProfileDTO): Promise<BrowseDTO> {
   return { profile, rows, continueWatching };
 }
 
+export async function getWatchlistPage(
+  profile: ProfileDTO,
+  page: number,
+  limit: number,
+): Promise<Paginated<WatchlistDTO> & { unavailableCount: number }> {
+  const [total, docs] = await Promise.all([
+    WatchlistItem.countDocuments({ profile: profile.id }),
+    WatchlistItem.find({ profile: profile.id })
+      .select("title addedAt")
+      .sort({ addedAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean() as unknown as Promise<Array<{ title: Types.ObjectId; addedAt: Date }>>,
+  ]);
+
+  const ids = docs.map((doc) => doc.title);
+  const titles = ids.length
+    ? (await Title.find({
+        _id: { $in: ids },
+        maturity: { $lte: profile.maxRating as Maturity },
+      })
+        .select(TITLE_FIELDS)
+        .limit(100)
+        .lean()) as unknown as LeanTitle[]
+    : [];
+  const byId = new Map(titles.map((title) => [title._id.toString(), title]));
+
+  const items: WatchlistDTO[] = docs.flatMap((doc) => {
+    const title = byId.get(doc.title.toString());
+    if (!title) return [];
+    return [{
+      id: doc.title.toString(),
+      titleId: doc.title.toString(),
+      addedAt: doc.addedAt.toISOString(),
+      unavailable: false,
+      title: titleToDTO(title),
+    }];
+  });
+
+  return {
+    items,
+    page,
+    limit,
+    total,
+    pages: Math.max(1, Math.ceil(total / limit)),
+    unavailableCount: docs.length - items.length,
+  };
+}
+
 export async function getEpisodeRows(titleId: string): Promise<SeasonDTO[]> {
   const seasons = (await Season.find({ title: titleId })
     .select("seasonNumber year episodeCount")
@@ -275,21 +326,27 @@ export type TitleDetailResult =
 
 export async function getTitleDetail(
   id: string,
-  profile: { maxRating: number },
+  profile: ProfileDTO,
 ): Promise<TitleDetailResult> {
   if (!Types.ObjectId.isValid(id)) return { state: "not-found" };
   const doc = (await Title.findById(id).select(TITLE_FIELDS).lean()) as unknown as LeanTitle | null;
   if (!doc) return { state: "not-found" };
   if (doc.maturity > profile.maxRating) return { state: "forbidden" };
 
-  const seasons = await getEpisodeRows(id);
+  const [seasons, inWatchlist, reaction] = await Promise.all([
+    getEpisodeRows(id),
+    WatchlistItem.exists({ profile: profile.id, title: id }),
+    Reaction.findOne({ profile: profile.id, title: id }).select("value").lean(),
+  ]);
   return {
     state: "ok",
     data: {
       ...titleToDTO(doc),
       seasons,
-      inWatchlist: false,
-      reaction: null,
+      inWatchlist: Boolean(inWatchlist),
+      reaction: reaction && (reaction.value === "like" || reaction.value === "dislike")
+        ? reaction.value
+        : null,
     },
   };
 }
