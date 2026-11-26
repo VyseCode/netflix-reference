@@ -73,3 +73,13 @@ export async function requireProfile(): Promise<ProfileContext> {
 export function canWatch(profile: ProfileDTO, maturity: number): boolean {
   return isAllowed(profile.maxRating, maturity);
 }
+
+export async function resolveActiveProfile(userId: string): Promise<ProfileDTO | null> {
+  await connectDB();
+  const user = await User.findById(userId).select("activeProfile").lean();
+  if (!user?.activeProfile) return null;
+  const profile = await Profile.findOne({ _id: user.activeProfile, account: userId })
+    .select("name avatarColor kids maxRating createdAt")
+    .lean();
+  return profile ? toProfileDTO(profile as LeanProfile) : null;
+}
